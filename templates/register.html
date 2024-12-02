@@ -4,7 +4,108 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FreshBasket - Register</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* General Body Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+h1, h2 {
+    color: #2c3e50;
+}
+
+h2 {
+    margin-top: 20px;
+}
+
+/* Navigation Styling */
+nav {
+    background-color: #34495e;
+    padding: 10px;
+}
+
+nav ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: space-around;
+}
+
+nav ul li {
+    display: inline;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 10px 20px;
+}
+
+nav ul li a:hover {
+    background-color: #2c3e50;
+    border-radius: 5px;
+}
+
+/* Table Styling */
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #34495e;
+    color: white;
+}
+
+td {
+    background-color: #f9f9f9;
+}
+
+tr:nth-child(even) td {
+    background-color: #f2f2f2;
+}
+
+/* Hover effect for table rows */
+tr:hover td {
+    background-color: #e0e0e0;
+}
+
+/* Flash message styles */
+.flash {
+    padding: 10px;
+    margin: 20px 0;
+    border-radius: 5px;
+}
+
+.flash.success {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.flash.danger {
+    background-color: #e74c3c;
+    color: white;
+}
+
+    </style>
 </head>
 <body>
 
@@ -42,6 +143,13 @@
 
         <label for="default_address">Default Address:</label>
         <textarea id="default_address" name="default_address" placeholder="Enter your default address" required></textarea>
+
+        <!-- Role Selection (Admin or Customer) -->
+        <label for="role">Role:</label>
+        <select id="role" name="role" required>
+            <option value="customer">Customer</option>
+            <option value="admin">Admin</option>
+        </select>
 
         <button type="submit">Register</button>
     </form>

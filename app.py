@@ -3,7 +3,6 @@ import mysql.connector
 from mysql.connector import Error
 from mysql.connector.pooling import MySQLConnectionPool
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
 import os
 
 # Simulated database for products
@@ -44,11 +43,9 @@ def get_db_connection():
         app.logger.error(f"Database connection error: {err}")
         return None
 
-
 @app.route('/')
 def home():
-    return render_template('home.html')  # Render home page
-
+    return render_template('home.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -63,6 +60,8 @@ def register():
             flash('Default address is required!')
             return redirect(url_for('register'))
 
+        role = request.form.get('role', 'customer')
+
         conn = get_db_connection()
         if not conn:
             flash('Database connection error. Please try again later.')
@@ -71,12 +70,12 @@ def register():
         cursor = conn.cursor()
         try:
             cursor.execute(
-                'INSERT INTO users (name, mobile, email, password, address) VALUES (%s, %s, %s, %s, %s)',
-                (name, mobile, email, password, default_address)
+                'INSERT INTO users (name, mobile, email, password, address, role) VALUES (%s, %s, %s, %s, %s, %s)',
+                (name, mobile, email, password, default_address, role)
             )
             conn.commit()
             flash('Thank you for registering! Please log in to continue.', 'success')
-            return redirect(url_for('login'))  # Redirect to login page
+            return redirect(url_for('login'))
         except Error as e:
             flash(f"Error: {e}", 'danger')
             conn.rollback()
@@ -84,7 +83,6 @@ def register():
             cursor.close()
             conn.close()
     return render_template('register.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -103,12 +101,15 @@ def login():
             user = cursor.fetchone()
 
             if user and check_password_hash(user['password'], password):
-                # Set user session
                 session['user_id'] = user['id']
                 session['user_name'] = user['name']
+                session['role'] = user['role']
                 flash('Login successful!', 'success')
 
-                return redirect(url_for('shop'))  # Redirect to shop page
+                if user['role'] == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                else:
+                    return redirect(url_for('shop'))
             else:
                 flash('Invalid email or password. Please try again.', 'danger')
         except Error as e:
@@ -204,6 +205,136 @@ def logout():
     flash('You have been logged out.')
     return redirect(url_for('home'))  # Redirect to home page
 
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'role' not in session or session['role'] != 'admin':
+        flash('Access denied: Admins only.')
+        return redirect(url_for('home'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT o.id AS order_id, o.status, o.amount, u.name AS user_name, u.email AS user_email
+            FROM orders o
+            JOIN users u ON o.user_id = u.id
+            ORDER BY o.id DESC
+        """)
+        orders = cursor.fetchall()
+    except Error as e:
+        flash(f"Error: {str(e)}", 'danger')
+        orders = []
+    finally:
+        cursor.close()
+        conn.close()
+
+    return render_template('admin_dashboard.html', orders=orders)
+
+@app.route('/admin_product_management')
+def admin_product_management():
+    if 'role' not in session or session['role'] != 'admin':
+        flash('Access denied: Admins only.')
+        return redirect(url_for('home'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute('SELECT * FROM products')
+    products = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return render_template('admin_product_management.html', products=products)
+
+@app.route('/add_product', methods=['GET', 'POST'])
+def add_product():
+    if 'role' not in session or session['role'] != 'admin':
+        flash('Access denied: Admins only.')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        name = request.form['name']
+        price = float(request.form['price'])
+        description = request.form['description']
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO products (name, price, description) VALUES (%s, %s, %s)',
+                (name, price, description)
+            )
+            conn.commit()
+            flash('Product added successfully!', 'success')
+            return redirect(url_for('admin_product_management'))
+        except Error as e:
+            conn.rollback()
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+
+    return render_template('add_product.html')
+
+@app.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
+def edit_product(product_id):
+    if 'role' not in session or session['role'] != 'admin':
+        flash('Access denied: Admins only.')
+        return redirect(url_for('home'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+    product = cursor.fetchone()
+
+    if not product:
+        flash('Product not found.', 'danger')
+        return redirect(url_for('admin_product_management'))
+
+    if request.method == 'POST':
+        name = request.form['name']
+        price = float(request.form['price'])
+        description = request.form['description']
+
+        try:
+            cursor.execute(
+                'UPDATE products SET name = %s, price = %s, description = %s WHERE id = %s',
+                (name, price, description, product_id)
+            )
+            conn.commit()
+            flash('Product updated successfully!', 'success')
+            return redirect(url_for('admin_product_management'))
+        except Error as e:
+            conn.rollback()
+            flash(f'Error: {str(e)}', 'danger')
+        finally:
+            cursor.close()
+            conn.close()
+
+    return render_template('edit_product.html', product=product)
+
+@app.route('/delete_product/<int:product_id>', methods=['POST'])
+def delete_product(product_id):
+    if 'role' not in session or session['role'] != 'admin':
+        flash('Access denied: Admins only.')
+        return redirect(url_for('home'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute('DELETE FROM products WHERE id = %s', (product_id,))
+        conn.commit()
+        flash('Product deleted successfully!', 'success')
+    except Error as e:
+        conn.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('admin_product_management'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
