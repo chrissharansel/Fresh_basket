@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 
+# Sample products for the shop
 products = [
     {"id": "apple", "name": "Organic Apples", "price": 299},
     {"id": "carrot", "name": "Fresh Carrots", "price": 149},
@@ -22,12 +23,15 @@ products = [
 ]
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
-app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_TYPE'] = 'filesystem' 
 
+# Secret key for session management
+app.secret_key = os.urandom(24)
+app.config['SESSION_COOKIE_SECURE'] = True  # Cookies should only be sent over HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript from accessing cookies
+app.config['SESSION_PERMANENT'] = False  # Sessions don't persist across browser sessions
+app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem to store sessions
+
+# Database configuration for MySQL
 db_config = {
     'host': 'ecomdbs.c362gw2i0ox8.us-east-1.rds.amazonaws.com',
     'user': 'admin',
@@ -35,6 +39,7 @@ db_config = {
     'database': 'fresh'
 }
 
+# Connection pool
 cnxpool = MySQLConnectionPool(pool_name="mypool", pool_size=5, **db_config)
 
 def get_db_connection():
@@ -44,11 +49,13 @@ def get_db_connection():
         app.logger.error(f"Database connection error: {err}")
         return None
 
+# Home route
 @app.route('/')
 def home():
-    session['cart'] = []  # Example session usage
-    return 'Session has been initialized.'
+    session['cart'] = []  # Initialize empty cart
+    return render_template('home.html')  # Make sure to create home.html in templates
 
+# User registration route
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -82,8 +89,10 @@ def register():
         finally:
             cursor.close()
             conn.close()
+
     return render_template('register.html')
 
+# User login route
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -104,7 +113,6 @@ def login():
                 session['user_id'] = user['id']
                 session['user_name'] = user['name']
                 flash('Login successful!', 'success')
-
                 return redirect(url_for('shop'))
             else:
                 flash('Invalid email or password. Please try again.', 'danger')
@@ -116,6 +124,7 @@ def login():
 
     return render_template('login.html')
 
+# Shop route (show products)
 @app.route('/shop')
 def shop():
     if 'user_id' not in session:
@@ -124,16 +133,16 @@ def shop():
 
     return render_template('shop.html', products=products)
 
+# View cart route
 @app.route('/cart')
 def view_cart():
     cart_items = session.get('cart', [])
     total_price = sum(item['price'] * item['quantity'] for item in cart_items)
     total_items = sum(item['quantity'] for item in cart_items)
 
-    print("Cart items:", cart_items)
-
     return render_template('cart.html', cart_items=cart_items, total_price=total_price, total_items=total_items)
 
+# Add item to cart
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     item_id = request.form.get('item_id')
@@ -152,10 +161,9 @@ def add_to_cart():
 
     session['cart'] = cart
 
-    print("Updated cart:", session.get('cart', []))
-
     return redirect(url_for('view_cart'))
 
+# Place order route
 @app.route('/place_order', methods=['POST'])
 def place_order():
     if 'user_id' not in session:
@@ -192,6 +200,7 @@ def place_order():
         cursor.close()
         conn.close()
 
+# Logout route
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
