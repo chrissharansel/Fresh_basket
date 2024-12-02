@@ -5,16 +5,31 @@ from mysql.connector.pooling import MySQLConnectionPool
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
-import binascii
+
+# Simulated database for products
+products = [
+    {"id": "apple", "name": "Organic Apples", "price": 299},
+    {"id": "carrot", "name": "Fresh Carrots", "price": 149},
+    {"id": "egg", "name": "Farm Fresh Eggs", "price": 99},
+    {"id": "mango", "name": "Fresh Mangoes", "price": 199},
+    {"id": "sweet-potato", "name": "Sweet Potatoes", "price": 179},
+    {"id": "lettuce", "name": "Green Lettuce", "price": 89},
+    {"id": "banana", "name": "Organic Bananas", "price": 59},
+    {"id": "bell-pepper", "name": "Red Bell Peppers", "price": 120},
+    {"id": "tomato", "name": "Fresh Tomatoes", "price": 69},
+    {"id": "orange", "name": "Juicy Oranges", "price": 129},
+    {"id": "pineapple", "name": "Fresh Pineapples", "price": 149},
+    {"id": "grapes", "name": "Red Grapes", "price": 249},
+]
 
 app = Flask(__name__)
-app.secret_key = binascii.hexlify(os.urandom(24)).decode()  # Secret key for sessions and flash messages
+app.secret_key = os.urandom(24)  # Secret key for sessions and flash messages
 
 # Database configuration
 db_config = {
-    'host': 'freshbasketdb.cxme8a4m4kjr.us-east-1.rds.amazonaws.com',
+    'host': 'ecomdbs.c362gw2i0ox8.us-east-1.rds.amazonaws.com',
     'user': 'admin',
-    'password': 'freshbasket',
+    'password': 'WDWawsdb05',
     'database': 'fresh'
 }
 
@@ -29,9 +44,11 @@ def get_db_connection():
         app.logger.error(f"Database connection error: {err}")
         return None
 
+
 @app.route('/')
 def home():
     return render_template('home.html')  # Render home page
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -102,58 +119,62 @@ def login():
 
     return render_template('login.html')
 
+
 @app.route('/shop')
 def shop():
     if 'user_id' not in session:
         flash('Please log in to access the shop.')
         return redirect(url_for('login'))  # Redirect to login page if not logged in
     
-    cart_items = session.get('cart_items', [])
+    return render_template('shop.html', products=products)
+
+
+@app.route('/cart')
+def view_cart():
+    cart_items = session.get('cart', [])
+    print("Cart items:", cart_items)  # Debugging the cart
     total_price = sum(item['price'] * item['quantity'] for item in cart_items)
-    return render_template('shop.html', cart_items=cart_items, total_price=total_price)
+    total_items = sum(item['quantity'] for item in cart_items)
 
-@app.route('/cart', methods=['GET', 'POST'])
-def cart():
-    if 'user_id' not in session:
-        flash('Please log in to access the cart.')
-        return redirect(url_for('login'))
+    return render_template('cart.html', cart_items=cart_items, total_price=total_price, total_items=total_items)
 
-    if request.method == 'POST':
-        item_data = request.get_json()
-        item_name = item_data['name']
-        item_price = item_data['price']
-        item_quantity = int(item_data['quantity'])
 
-        cart_items = session.get('cart_items', [])
-        for item in cart_items:
-            if item['name'] == item_name:
-                item['quantity'] += item_quantity
-                break
-        else:
-            cart_items.append({'name': item_name, 'price': item_price, 'quantity': item_quantity})
+@app.route('/add_to_cart', methods=['POST'])
+def add_to_cart():
+    item_id = request.form.get('item_id')
+    item_name = request.form.get('item_name')
+    item_price = float(request.form.get('item_price'))
+    item_quantity = int(request.form.get('item_quantity'))
 
-        session['cart_items'] = cart_items
-        return jsonify(success=True)
+    cart = session.get('cart', [])  # Get existing cart or create an empty list
 
-    cart_items = session.get('cart_items', [])
-    total_price = sum(item['price'] * item['quantity'] for item in cart_items)
-    return render_template('cart.html', cart_items=cart_items, total_price=total_price)
+    existing_item = next((item for item in cart if item['id'] == item_id), None)
+
+    if existing_item:
+        existing_item['quantity'] += item_quantity
+    else:
+        cart.append({'id': item_id, 'name': item_name, 'price': item_price, 'quantity': item_quantity})
+
+    session['cart'] = cart  # Set the updated cart back to the session
+    print("Updated cart:", session.get('cart', []))  # Debugging the cart
+
+    return redirect(url_for('view_cart'))
 
 @app.route('/place_order', methods=['POST'])
 def place_order():
     if 'user_id' not in session:
         return jsonify(success=False, message="User not logged in")
-    
+
     data = request.get_json()
     delivery_address = data.get('address', 'Default Address')
     payment_method = data["payment_method"]
     items = data['items']
     total_price = data['total_price']
-    
+
     conn = get_db_connection()
     if not conn:
         return jsonify(success=False, message="Database connection error.")
-    
+
     cursor = conn.cursor()
     try:
         cursor.execute(
@@ -175,12 +196,14 @@ def place_order():
         cursor.close()
         conn.close()
 
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)  # Remove user session data
     session.pop('user_name', None)
     flash('You have been logged out.')
     return redirect(url_for('home'))  # Redirect to home page
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
