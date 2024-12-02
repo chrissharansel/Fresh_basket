@@ -26,6 +26,7 @@ app.secret_key = os.urandom(24)
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_TYPE'] = 'filesystem' 
 
 db_config = {
     'host': 'ecomdbs.c362gw2i0ox8.us-east-1.rds.amazonaws.com',
@@ -45,7 +46,8 @@ def get_db_connection():
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    session['cart'] = []  # Example session usage
+    return 'Session has been initialized.'
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
