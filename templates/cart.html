@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Cart</title>
+    <style>
+        /* Your CSS styles */
+        .cart-container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .cart-items {
+            margin-bottom: 20px;
+        }
+
+        .cart-item {
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .cart-item p {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .cart-total {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        .cart-actions {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .checkout-button, .continue-shopping-button {
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .checkout-button:hover, .continue-shopping-button:hover {
+            background-color: #45a049;
+        }
+
+        .go-to-shop-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .go-to-shop-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FreshBasket</h1>
+        <nav>
+            <a href="shop.html">Shop</a>
+            <a href="cart.html">Cart</a>
+            <a href="login.html">Login</a>
+        </nav>
+    </header>
+
+    <h2>Your Cart</h2>
+    <div class="cart-container">
+        <div class="cart-items" id="cart-items">
+            <!-- Cart items will be dynamically inserted here -->
+        </div>
+
+        <div class="cart-total" id="cart-total">
+            <!-- Total price will be dynamically inserted here -->
+        </div>
+
+        <div class="cart-actions">
+            <button class="checkout-button" onclick="checkout()">Checkout</button>
+            <button class="continue-shopping-button" onclick="window.location.href='shop.html'">Continue Shopping</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 FreshBasket</p>
+    </footer>
+
+    <script>
+        // Retrieve the cart from localStorage
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        // Function to update the cart display
+        function updateCart() {
+            const cartItemsElement = document.getElementById('cart-items');
+            const cartTotalElement = document.getElementById('cart-total');
+
+            if (cart.length === 0) {
+                cartItemsElement.innerHTML = '<p>Your cart is empty!</p>';
+                cartTotalElement.innerHTML = '';
+            } else {
+                // Clear the cart items first
+                cartItemsElement.innerHTML = '';
+                let totalPrice = 0;
+
+                // Loop through cart items and display them
+                cart.forEach(item => {
+                    const cartItemDiv = document.createElement('div');
+                    cartItemDiv.classList.add('cart-item');
+                    cartItemDiv.innerHTML = `
+                        <p><strong>${item.name}</strong></p>
+                        <p>Price: $${item.price}</p>
+                        <p>Quantity: ${item.quantity}</p>
+                    `;
+                    cartItemsElement.appendChild(cartItemDiv);
+                    totalPrice += item.price * item.quantity;
+                });
+
+                // Display the total price
+                cartTotalElement.innerHTML = `<p><strong>Total: $${totalPrice.toFixed(2)}</strong></p>`;
+            }
+        }
+
+        // Function to handle checkout (you can implement this with further functionality)
+        function checkout() {
+            alert('Proceeding to checkout...');
+            // Here you could redirect to a checkout page or integrate with payment API
+        }
+
+        // Initialize the cart on page load
+        document.addEventListener('DOMContentLoaded', updateCart);
+    </script>
+</body>
+</html>

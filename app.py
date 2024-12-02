@@ -45,12 +45,12 @@ def register():
         if not default_address:
             flash('Default address is required!')
             return redirect(url_for('register'))
-        
+
         conn = get_db_connection()
         if not conn:
             flash('Database connection error. Please try again later.')
             return redirect(url_for('register'))
-        
+
         cursor = conn.cursor()
         try:
             cursor.execute(
@@ -58,15 +58,16 @@ def register():
                 (name, mobile, email, password, default_address)
             )
             conn.commit()
-            flash('Thank you for registering!')
-            return redirect(url_for('shop'))  # Redirect to shop page after registration
+            flash('Thank you for registering! Please log in to continue.', 'success')
+            return redirect(url_for('login'))  # Redirect to login page
         except Error as e:
-            flash(f"Error: {e}")
+            flash(f"Error: {e}", 'danger')
             conn.rollback()
         finally:
             cursor.close()
             conn.close()
-    return render_template('register.html')  # Should point to a dedicated registration page, not the shop page
+    return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -76,7 +77,7 @@ def login():
 
         conn = get_db_connection()
         if not conn:
-            flash('Database connection error. Please try again later.')
+            flash('Database connection error. Please try again later.', 'danger')
             return redirect(url_for('login'))
 
         cursor = conn.cursor(dictionary=True)
@@ -88,24 +89,24 @@ def login():
                 # Set user session
                 session['user_id'] = user['id']
                 session['user_name'] = user['name']
-                flash('Login successful!')
-                return redirect(url_for('shop'))  # This should redirect to the shop page
+                flash('Login successful!', 'success')
+
+                return redirect(url_for('shop'))  # Redirect to shop page
             else:
-                flash('Invalid email or password. Please try again.')
-                return redirect(url_for('login'))
+                flash('Invalid email or password. Please try again.', 'danger')
         except Error as e:
-            flash(f'An error occurred: {str(e)}')
+            flash(f'An error occurred: {str(e)}', 'danger')
         finally:
             cursor.close()
             conn.close()
 
-    return render_template('shop.html')  # Ensure this returns the login page for GET request
+    return render_template('login.html')
 
 @app.route('/shop')
 def shop():
     if 'user_id' not in session:
         flash('Please log in to access the shop.')
-        return redirect(url_for('login'))
+        return redirect(url_for('login'))  # Redirect to login page if not logged in
     
     cart_items = session.get('cart_items', [])
     total_price = sum(item['price'] * item['quantity'] for item in cart_items)

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Items - Fresh Basket</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Available Items</h2>
+    <ul>
+        {% for item in items %}
+            <li>
+                <h3>{{ item.item_name }}</h3>
+                <p>Price: {{ item.price }}</p>
+                <form action="{{ url_for('items') }}" method="post">
+                    <input type="hidden" name="name" value="{{ item.item_name }}">
+                    <input type="hidden" name="price" value="{{ item.price }}">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" name="quantity" min="1" required>
+                    <button type="submit">Add to Cart</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
