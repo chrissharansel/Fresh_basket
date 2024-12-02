@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import os
 
-# Sample products for the shop
+# Simulated database for products
 products = [
     {"id": "apple", "name": "Organic Apples", "price": 299},
     {"id": "carrot", "name": "Fresh Carrots", "price": 149},
@@ -23,15 +23,9 @@ products = [
 ]
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # Secret key for sessions and flash messages
 
-# Secret key for session management
-app.secret_key = os.urandom(24)
-app.config['SESSION_COOKIE_SECURE'] = True  # Cookies should only be sent over HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript from accessing cookies
-app.config['SESSION_PERMANENT'] = False  # Sessions don't persist across browser sessions
-app.config['SESSION_TYPE'] = 'filesystem'  # Use filesystem to store sessions
-
-# Database configuration for MySQL
+# Database configuration
 db_config = {
     'host': 'ecomdbs.c362gw2i0ox8.us-east-1.rds.amazonaws.com',
     'user': 'admin',
@@ -39,9 +33,10 @@ db_config = {
     'database': 'fresh'
 }
 
-# Connection pool
+# Connection pool setup
 cnxpool = MySQLConnectionPool(pool_name="mypool", pool_size=5, **db_config)
 
+# Function to establish a database connection
 def get_db_connection():
     try:
         return cnxpool.get_connection()
@@ -49,13 +44,12 @@ def get_db_connection():
         app.logger.error(f"Database connection error: {err}")
         return None
 
-# Home route
+
 @app.route('/')
 def home():
-    session['cart'] = []  # Initialize empty cart
-    return render_template('home.html')  # Make sure to create home.html in templates
+    return render_template('home.html')  # Render home page
 
-# User registration route
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -82,17 +76,16 @@ def register():
             )
             conn.commit()
             flash('Thank you for registering! Please log in to continue.', 'success')
-            return redirect(url_for('login'))
+            return redirect(url_for('login'))  # Redirect to login page
         except Error as e:
             flash(f"Error: {e}", 'danger')
             conn.rollback()
         finally:
             cursor.close()
             conn.close()
-
     return render_template('register.html')
 
-# User login route
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -110,10 +103,12 @@ def login():
             user = cursor.fetchone()
 
             if user and check_password_hash(user['password'], password):
+                # Set user session
                 session['user_id'] = user['id']
                 session['user_name'] = user['name']
                 flash('Login successful!', 'success')
-                return redirect(url_for('shop'))
+
+                return redirect(url_for('shop'))  # Redirect to shop page
             else:
                 flash('Invalid email or password. Please try again.', 'danger')
         except Error as e:
@@ -124,25 +119,26 @@ def login():
 
     return render_template('login.html')
 
-# Shop route (show products)
+
 @app.route('/shop')
 def shop():
     if 'user_id' not in session:
         flash('Please log in to access the shop.')
-        return redirect(url_for('login'))
-
+        return redirect(url_for('login'))  # Redirect to login page if not logged in
+    
     return render_template('shop.html', products=products)
 
-# View cart route
+
 @app.route('/cart')
 def view_cart():
     cart_items = session.get('cart', [])
+    print("Cart items:", cart_items)  # Debugging the cart
     total_price = sum(item['price'] * item['quantity'] for item in cart_items)
     total_items = sum(item['quantity'] for item in cart_items)
 
     return render_template('cart.html', cart_items=cart_items, total_price=total_price, total_items=total_items)
 
-# Add item to cart
+
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
     item_id = request.form.get('item_id')
@@ -150,7 +146,7 @@ def add_to_cart():
     item_price = float(request.form.get('item_price'))
     item_quantity = int(request.form.get('item_quantity'))
 
-    cart = session.get('cart', [])
+    cart = session.get('cart', [])  # Get existing cart or create an empty list
 
     existing_item = next((item for item in cart if item['id'] == item_id), None)
 
@@ -159,11 +155,11 @@ def add_to_cart():
     else:
         cart.append({'id': item_id, 'name': item_name, 'price': item_price, 'quantity': item_quantity})
 
-    session['cart'] = cart
+    session['cart'] = cart  # Set the updated cart back to the session
+    print("Updated cart:", session.get('cart', []))  # Debugging the cart
 
     return redirect(url_for('view_cart'))
 
-# Place order route
 @app.route('/place_order', methods=['POST'])
 def place_order():
     if 'user_id' not in session:
@@ -200,13 +196,14 @@ def place_order():
         cursor.close()
         conn.close()
 
-# Logout route
+
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
+    session.pop('user_id', None)  # Remove user session data
     session.pop('user_name', None)
     flash('You have been logged out.')
-    return redirect(url_for('home'))
+    return redirect(url_for('home'))  # Redirect to home page
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
